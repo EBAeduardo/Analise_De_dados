@@ -6,10 +6,15 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
 
 medicalInsurance = pd.read_csv(r'C:\Users\bianc\Desktop\A3_Analize_De_Dados\BancoDeDados\medical_insurance.csv', keep_default_na= False)
 print("primeiras 5 linhas:")
 print(medicalInsurance.head())
+
 
 print(" ")
 
@@ -19,9 +24,6 @@ print(f"Total de colunas: {len(medicalInsurance.columns)}")
 
 print("\n Nome das colunas:")
 print(medicalInsurance.columns.tolist())
-
-print("\n")
-print("dataset medical premium")
 
 #tratando dados
 medicalInsuranceTratado = pd.get_dummies(medicalInsurance, columns= ['sex', 'region', 'urban_rural', 'education', 'marital_status', 
@@ -33,7 +35,7 @@ print(medicalInsuranceTratado)
 y = medicalInsuranceTratado['annual_medical_cost']
 x = medicalInsuranceTratado.drop(['annual_medical_cost', 'person_id'], axis=1)
 
-#teste
+#Treino
 X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
 print(f"Total de dados de treino (x_train): {X_train.shape[0]} linhas")
@@ -50,13 +52,15 @@ r2_regrecaoLinear = r2_score(y_test, medicalInsuranceTratadoLinearPreverCustos)
 
 rmse_regrecaoLinear= np.sqrt(mean_squared_error(y_test, medicalInsuranceTratadoLinearPreverCustos))
 
+
+mediaCustoTeste = y_test.mean()
+print(f"(Contexto: O custo médio real nos dados de teste é: $ {mediaCustoTeste:.2f})")
+
+
 print("\n------Resutado Regreção linear------\n")
 print(f"Quão bem o modelo explica o custo (quanto mais próximo de 1 melhor): {r2_regrecaoLinear:.4f}")
 #esse erro é o valor que ele erra dos gastos tanto pra mais quanto pra menos na regreção linear
 print(f"Erro médio (quanto menor melhor): $ {rmse_regrecaoLinear:.2f}")
-
-mediaCustoTeste = y_test.mean()
-print(f"(Contexto: O custo médio real nos dados de teste é: $ {mediaCustoTeste:.2f})")
 
 
 
@@ -74,6 +78,7 @@ print("\n------Resutado Random Forest------\n")
 print(f"Quão bem o modelo explica o custo (R²): {r2_randomForest:.4f}")
 print(f"Erro médio (RMSE): $ {r2_randomForest:.2f}")
 
+#redes neurais
 scaler = StandardScaler()
 
 X_train_scaled = scaler.fit_transform(X_train)
@@ -101,3 +106,54 @@ print("\n----comparação entre eles----\n")
 print(f"Regressão Linear (Modelo 1): $ {rmse_regrecaoLinear:.2f}")
 print(f"Random Forest    (Modelo 2): $ {rmse_randomForest:.2f}")
 print(f"Rede Neural      (Modelo 3): $ {rmse_redesNeurais:.2f}")
+
+
+#aqui começa o codigo para ver os fatores que aumentam os custos com regreção linear
+
+print("\n------------------------------------------------\n")
+print("\n Com regreção linear \n")
+print("\n------------------------------------------------\n")
+
+# Pega os nomes de todas as colunas que o modelo usou
+nomes_colunas = x.columns
+
+# Cria uma "Series" (uma tabela) que combina o nome da coluna com seu coeficiente
+coeficientes = pd.Series(medicalInsuranceTratadoLinear.coef_, index=nomes_colunas)
+
+# Ordena os valores para ver os mais impactantes
+coeficientes_ordenados = coeficientes.sort_values(ascending=False)
+
+print("Características que tornam os custos maiores")
+print(coeficientes_ordenados.head(10)) # Mostra os 10 maiores
+
+#aqui começa o codigo para ver os fatores que aumentam os custos com random forest
+
+print("\n------------------------------------------------\n")
+print("\nCom random forest \n")
+print("\n------------------------------------------------\n")
+
+# Pega os nomes das colunas
+nomes_colunas = x.columns
+
+# Cria a Series com os nomes e os valores de importância
+importancias = pd.Series(medicalInsuranceTratadoRandomForest.feature_importances_, index=nomes_colunas)
+
+# Ordena do mais importante para o menos importante
+importancias_ordenadas = importancias.sort_values(ascending=False)
+
+print("Características mais importantes para prever o custo:")
+print(importancias_ordenadas.head(10))
+
+# --- Visualização das Importâncias (Random Forest) ---
+
+# Pega as 15 características mais importantes
+top_15_features = importancias_ordenadas.head(15)
+
+#Cria o gráfico
+plt.figure(figsize=(10, 8)) # Define o tamanho da figura
+sns.barplot(x=top_15_features.values, y=top_15_features.index, palette="viridis")
+plt.title('As 15 Características Mais Importantes (Random Forest)')
+plt.xlabel('Nível de Importância (Feature Importance)')
+plt.ylabel('Características')
+plt.tight_layout() # Ajusta para não cortar os nomes
+plt.show() # Mostra o gráfico
